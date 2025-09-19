@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<!-- Inter font Google Fonts -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+			rel="stylesheet"
+		/>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Product Dashboard</title>
+		<link rel="stylesheet" href="./dashboard.css" />
+	</head>
+	<body>
+		<div class="main-layout">
+			<!-- SIDEBAR -->
+			<aside id="sidebar" class="sidebar">
+				<!-- Stats Section -->
+				<div class="stats-section">
+					<!-- <h2 class="stats-heading">Product Statistics</h2> -->
+					<div class="stats-container">
+						<!-- <div class="stat-item">
+							<span class="stat-label">Total Products:</span>
+							<span class="stat-value" id="total-products-count"
+								>0</span
+							>
+						</div> -->
+						<div class="stat-item">
+							<span class="stat-label"
+								>Số sản phẩm đang hiển thị:
+							</span>
+							<span class="stat-value" id="showing-products-count"
+								>0</span
+							>
+						</div>
+						<!-- <div class="stat-item">
+							<span class="stat-label">With Price:</span>
+							<span class="stat-value" id="with-price-count"
+								>0</span
+							>
+						</div> -->
+						<!-- <div class="stat-item">
+							<span class="stat-label">With Rating:</span>
+							<span class="stat-value" id="with-rating-count"
+								>0</span
+							>
+						</div> -->
+					</div>
+				</div>
+
+				<div class="filter-section">
+					<h2 class="filter-heading">Sellers</h2>
+					<div id="sellerFilters" class="filter-options"></div>
+				</div>
+				<div class="filter-section">
+					<h2 class="filter-heading">Categories</h2>
+					<div id="categoryFilters" class="filter-options"></div>
+				</div>
+				<div class="filter-section">
+					<h2 class="filter-heading">Source</h2>
+					<div id="sourceFilters" class="filter-options"></div>
+				</div>
+			</aside>
+			<!-- MAIN -->
+			<main class="main-content">
+				<div class="container">
+					<!-- Render here -->
+					<div id="productList" class="product-list"></div>
+					<div id="productTable" style="display: none"></div>
+				</div>
+			</main>
+			<!-- FILTER BAR -->
+			<aside id="filter-bar" class="filter-bar">
+				<div class="search-filter">
+					<h3
+						style="
+							margin: 0 0 8px 0;
+							font-size: 16px;
+							color: var(--text-primary);
+						"
+					>
+						Search Products
+					</h3>
+					<input
+						type="text"
+						id="searchInput"
+						class="search-input"
+						placeholder="Search product name..."
+					/>
+					<button onclick="loadProducts()">Search</button>
+					<div class="view-toggle">
+						<button id="gridBtn" class="view-btn active">
+							Grid
+						</button>
+						<button id="tableBtn" class="view-btn">Table</button>
+					</div>
+
+					<span class="section-title">Filter Options</span>
+
+					<!-- Filter price -->
+					<div class="filter price-filter">
+						<div class="filter-row">
+							<label for="minPrice">Min Price:</label>
+							<input
+								type="number"
+								id="minPrice"
+								placeholder="0"
+							/>
+						</div>
+						<div class="filter-row">
+							<label for="maxPrice">Max Price:</label>
+							<input
+								type="number"
+								id="maxPrice"
+								placeholder="1000"
+							/>
+						</div>
+					</div>
+					<!-- Filter date_first_available -->
+					<div class="filter date-filter">
+						<div class="filter-row">
+							<label for="startDate">Start Date:</label>
+							<input type="date" id="startDate" />
+						</div>
+
+						<div class="filter-row">
+							<label for="endDate">End Date:</label>
+							<input type="date" id="endDate" />
+						</div>
+					</div>
+					<!-- Filter bought_in_past_month -->
+					<div class="filter checkbox-filter">
+						<label for="boughtInPastMonth"
+							>Bought in Past Month:</label
+						>
+						<input type="checkbox" id="boughtInPastMonth" />
+					</div>
+
+					<span class="section-title">Sort Products</span>
+					<!-- Sort options -->
+					<div class="filter sort-filter">
+						<div class="filter-row">
+							<label for="sortBy">Sort By:</label>
+							<select id="sortBy">
+								<option value="">-- Select --</option>
+								<option value="price_asc">
+									Price: Low to High
+								</option>
+								<option value="price_desc">
+									Price: High to Low
+								</option>
+								<option value="date_asc">
+									Date First Available: Oldest to Newest
+								</option>
+								<option value="date_desc">
+									Date First Available: Newest to Oldest
+								</option>
+								<option value="bought_desc">
+									Bought in Past Month: High to Low
+								</option>
+								<option value="bought_asc">
+									Bought in Past Month: Low to High
+								</option>
+							</select>
+						</div>
+						<button
+							onclick="sortProducts()"
+							style="background: var(--accent); margin-top: 10px"
+						>
+							Apply Sort
+						</button>
+					</div>
+				</div>
+			</aside>
+		</div>
+		<!-- Confirmation Modal -->
+		<div id="deleteModal" class="modal">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h2>Confirm Deletion</h2>
+					<span class="close-modal">&times;</span>
+				</div>
+				<div class="modal-body">
+					<p>Are you sure you want to delete this product?</p>
+					<p id="deleteProductName" style="font-weight: bold"></p>
+				</div>
+				<div class="modal-footer">
+					<button
+						class="modal-btn modal-btn-cancel"
+						id="cancelDelete"
+					>
+						Cancel
+					</button>
+					<button
+						class="modal-btn modal-btn-delete"
+						id="confirmDelete"
+					>
+						Delete
+					</button>
+				</div>
+			</div>
+		</div>
+	</body>
+	<script>
+		// Load environment variables from server
+		fetch('/api/config')
+			.then((response) => response.json())
+			.then((config) => {
+				window.API_BASE_URL = config.API_BASE_URL || '';
+				console.log('Config loaded:', config);
+			})
+			.catch((error) => {
+				console.error('Failed to load config:', error);
+				window.API_BASE_URL = '';
+			});
+	</script>
+	<script src="./dashboard.js"></script>
+</html>
