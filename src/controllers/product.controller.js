@@ -27,6 +27,32 @@ exports.getUniqueCategories = async (req, res) => {
 	}
 };
 
+exports.getUniqueSources = async (req, res) => {
+	try {
+		console.log('Getting unique sources...');
+
+		// First check if we have any products at all
+		const allProducts = await productService.getAllProducts();
+		console.log('Total products in database:', allProducts.length);
+
+		if (allProducts.length === 0) {
+			console.log('No products found in database');
+			return res.json([]);
+		}
+
+		// Check if any products have source field
+		const productsWithSource = allProducts.filter((p) => p.source);
+		console.log('Products with source field:', productsWithSource.length);
+
+		const sourceList = await productService.getUniqueSources();
+		console.log('Source list:', sourceList);
+		res.json(sourceList);
+	} catch (err) {
+		console.error('Error in getUniqueSources controller:', err);
+		res.status(500).json({ error: err.message });
+	}
+};
+
 exports.createProduct = async (req, res) => {
 	console.log('req.body:', req.body);
 	try {

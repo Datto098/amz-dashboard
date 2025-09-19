@@ -28,63 +28,154 @@ function getFilterParams() {
 }
 
 async function fetchProducts() {
-	const params = getFilterParams();
-	let url = `${window.API_BASE_URL || ''}/api/products`;
-	if (params.length) url += '?' + params.join('&');
-	const res = await fetch(url);
-	return await res.json();
+	try {
+		const params = getFilterParams();
+		let url = `${window.API_BASE_URL || ''}/api/products`;
+		if (params.length) url += '?' + params.join('&');
+
+		const res = await fetch(url);
+		if (!res.ok) {
+			throw new Error(`HTTP error! status: ${res.status}`);
+		}
+		return await res.json();
+	} catch (error) {
+		console.error('Error fetching products:', error);
+		showError('Failed to load products. Please try again.');
+		return [];
+	}
 }
 
 async function fetchProductsCount() {
-	const params = getFilterParams();
-	let url = `${window.API_BASE_URL || ''}/api/products/count`;
-	if (params.length) url += '?' + params.join('&');
-	const res = await fetch(url);
-	const data = await res.json();
-	return data.count;
+	try {
+		const params = getFilterParams();
+		let url = `${window.API_BASE_URL || ''}/api/products/count`;
+		if (params.length) url += '?' + params.join('&');
+
+		const res = await fetch(url);
+		if (!res.ok) {
+			throw new Error(`HTTP error! status: ${res.status}`);
+		}
+		const data = await res.json();
+		return data.count || 0;
+	} catch (error) {
+		console.error('Error fetching products count:', error);
+		return 0;
+	}
 }
 async function fetchSoldByList() {
-	const res = await fetch(
-		`${window.API_BASE_URL || ''}/api/products/soldby-list`
-	);
-	return await res.json();
+	try {
+		const res = await fetch(
+			`${window.API_BASE_URL || ''}/api/products/soldby-list`
+		);
+		if (!res.ok) {
+			throw new Error(`HTTP error! status: ${res.status}`);
+		}
+		return await res.json();
+	} catch (error) {
+		console.error('Error fetching sold by list:', error);
+		return [];
+	}
 }
+
 async function fetchCategoryList() {
-	const res = await fetch(
-		`${window.API_BASE_URL || ''}/api/products/category-list`
-	);
-	return await res.json();
+	try {
+		const res = await fetch(
+			`${window.API_BASE_URL || ''}/api/products/category-list`
+		);
+		if (!res.ok) {
+			throw new Error(`HTTP error! status: ${res.status}`);
+		}
+		return await res.json();
+	} catch (error) {
+		console.error('Error fetching category list:', error);
+		return [];
+	}
 }
-function renderSidebar(sellers, categories) {
+
+async function fetchSourceList() {
+	try {
+		const res = await fetch(
+			`${window.API_BASE_URL || ''}/api/products/source-list`
+		);
+		if (!res.ok) {
+			console.warn(
+				`Source list API returned ${res.status}, using empty array`
+			);
+			return [];
+		}
+		const data = await res.json();
+		return Array.isArray(data) ? data : [];
+	} catch (error) {
+		console.error('Error fetching source list:', error);
+		return [];
+	}
+}
+function renderSidebar(sellers, categories, sources) {
 	const sellerDiv = document.getElementById('sellerFilters');
 	const categoryDiv = document.getElementById('categoryFilters');
 	const sourceDiv = document.getElementById('sourceFilters');
 	if (!sellerDiv || !categoryDiv || !sourceDiv) return;
 
-	let sellerHtml = `<label class="filter-option"><input type="checkbox" name="seller" value="all" checked>All</label>`;
-	sellers.forEach((seller) => {
-		sellerHtml += `<label class="filter-option"><input type="checkbox" name="seller" value="${seller}"><span>${seller}</span></label>`;
+	// Render sellers with search and pagination
+	let sellerHtml = `
+		<div class="filter-search">
+			<input type="text" id="sellerSearch" placeholder="Search seller.." class="filter-search-input">
+		</div>
+		<div class="filter-list" id="sellerList">
+			<label class="filter-option">
+				<input type="checkbox" name="seller" value="all" checked>
+				<span>All</span>
+				<a href="#" class="clear-link" onclick="clearSellerFilters()">Clear</a>
+			</label>
+	`;
+
+	const visibleSellers = sellers.slice(0, 10);
+	visibleSellers.forEach((seller) => {
+		sellerHtml += `<label class="filter-option"><input type="checkbox" name="seller" value="${seller}"><span>${seller}</span><span class="count">0</span></label>`;
 	});
+
+	if (sellers.length > 10) {
+		sellerHtml += `<div class="show-more" onclick="toggleShowMore('seller')">Show more (${
+			sellers.length - 10
+		})</div>`;
+	}
+
+	sellerHtml += `</div>`;
 	sellerDiv.innerHTML = sellerHtml;
 
-	let categoryHtml = `<label class="filter-option"><input type="checkbox" name="category" value="all" checked>All</label>`;
-	categories.forEach((category) => {
-		categoryHtml += `<label class="filter-option"><input type="checkbox" name="category" value="${category}"><span>${category}</span></label>`;
+	// Render categories with search and pagination
+	let categoryHtml = `
+		<div class="filter-search">
+			<input type="text" id="categorySearch" placeholder="Search category.." class="filter-search-input">
+		</div>
+		<div class="filter-list" id="categoryList">
+			<label class="filter-option">
+				<input type="checkbox" name="category" value="all" checked>
+				<span>All</span>
+				<a href="#" class="clear-link" onclick="clearCategoryFilters()">Clear</a>
+			</label>
+	`;
+
+	const visibleCategories = categories.slice(0, 10);
+	visibleCategories.forEach((category) => {
+		categoryHtml += `<label class="filter-option"><input type="checkbox" name="category" value="${category}"><span>${category}</span><span class="count">0</span></label>`;
 	});
+
+	if (categories.length > 10) {
+		categoryHtml += `<div class="show-more" onclick="toggleShowMore('category')">Show more (${
+			categories.length - 10
+		})</div>`;
+	}
+
+	categoryHtml += `</div>`;
 	categoryDiv.innerHTML = categoryHtml;
 
-	// Source filter options
-	const sourceOptions = [
-		{ value: 'new-releases', label: 'New Releases' },
-		{ value: 'best-sellers', label: 'Best Sellers' },
-		// { value: 'direct', label: 'Direct' },
-		// { value: 'marketplace', label: 'Marketplace' },
-		// { value: 'unknown', label: 'Unknown' },
-	];
-
+	// Render sources (keep simple for now)
 	let sourceHtml = `<label class="filter-option"><input type="checkbox" name="source" value="all" checked>All</label>`;
-	sourceOptions.forEach((source) => {
-		sourceHtml += `<label class="filter-option"><input type="checkbox" name="source" value="${source.value}"><span>${source.label}</span></label>`;
+	sources.forEach((source) => {
+		const label =
+			source.charAt(0).toUpperCase() + source.slice(1).replace('-', ' ');
+		sourceHtml += `<label class="filter-option"><input type="checkbox" name="source" value="${source}"><span>${label}</span></label>`;
 	});
 	sourceDiv.innerHTML = sourceHtml;
 
@@ -107,11 +198,126 @@ function renderSidebar(sellers, categories) {
 			async () => await onSourceFilterChange.call(input)
 		);
 	});
+
+	// Add search functionality
+	setupFilterSearch('sellerSearch', 'seller');
+	setupFilterSearch('categorySearch', 'category');
+}
+
+// Helper functions for sidebar
+function getSellerCounts() {
+	const counts = {};
+	if (window.products) {
+		window.products.forEach((product) => {
+			if (product.soldBy) {
+				counts[product.soldBy] = (counts[product.soldBy] || 0) + 1;
+			}
+		});
+	}
+	return counts;
+}
+
+function getCategoryCounts() {
+	const counts = {};
+	if (window.products) {
+		window.products.forEach((product) => {
+			if (product.category) {
+				counts[product.category] = (counts[product.category] || 0) + 1;
+			}
+		});
+	}
+	return counts;
+}
+
+function setupFilterSearch(searchInputId, filterType) {
+	const searchInput = document.getElementById(searchInputId);
+	if (searchInput) {
+		searchInput.addEventListener('input', (e) => {
+			const searchTerm = e.target.value.toLowerCase();
+			const filterList = document.getElementById(filterType + 'List');
+			const options = filterList.querySelectorAll('.filter-option');
+
+			options.forEach((option) => {
+				const text = option.textContent.toLowerCase();
+				if (text.includes(searchTerm)) {
+					option.style.display = 'flex';
+				} else {
+					option.style.display = 'none';
+				}
+			});
+		});
+	}
+}
+
+function toggleShowMore(type) {
+	// This will be implemented to show all items
+	console.log('Toggle show more for:', type);
+}
+
+function clearSellerFilters() {
+	document.querySelectorAll('input[name="seller"]').forEach((input) => {
+		input.checked = false;
+	});
+	document.querySelector('input[name="seller"][value="all"]').checked = true;
+}
+
+function clearCategoryFilters() {
+	document.querySelectorAll('input[name="category"]').forEach((input) => {
+		input.checked = false;
+	});
+	document.querySelector(
+		'input[name="category"][value="all"]'
+	).checked = true;
+}
+
+// Update sidebar counts after products are loaded
+function updateSidebarCounts() {
+	if (!window.products || window.products.length === 0) {
+		console.log('No products available for counting');
+		return;
+	}
+
+	console.log(
+		'Updating sidebar counts for',
+		window.products.length,
+		'products'
+	);
+
+	// Update seller counts
+	const sellerCounts = getSellerCounts();
+	const sellerCountElements = document.querySelectorAll('#sellerList .count');
+	sellerCountElements.forEach((element) => {
+		const sellerName = element.previousElementSibling.textContent;
+		const count = sellerCounts[sellerName] || 0;
+		element.textContent = count;
+	});
+
+	// Update category counts
+	const categoryCounts = getCategoryCounts();
+	const categoryCountElements = document.querySelectorAll(
+		'#categoryList .count'
+	);
+	categoryCountElements.forEach((element) => {
+		const categoryName = element.previousElementSibling.textContent;
+		const count = categoryCounts[categoryName] || 0;
+		element.textContent = count;
+	});
+
+	console.log('Updated seller counts:', sellerCounts);
+	console.log('Updated category counts:', categoryCounts);
 }
 async function loadSidebar() {
-	const sellers = await fetchSoldByList();
-	const categories = await fetchCategoryList();
-	renderSidebar(sellers, categories);
+	try {
+		const [sellers, categories, sources] = await Promise.all([
+			fetchSoldByList(),
+			fetchCategoryList(),
+			fetchSourceList(),
+		]);
+		renderSidebar(sellers, categories, sources);
+	} catch (error) {
+		console.error('Error loading sidebar:', error);
+		showError('Failed to load filter options');
+	}
 }
 async function onSellerFilterChange() {
 	// Handle "All" checkbox logic
@@ -248,8 +454,28 @@ async function updateStats(products, filteredProducts) {
 	if (ratingElement) ratingElement.textContent = withRating;
 }
 
-async function filterProducts() {
+// Helper function to get currently filtered products (without rendering)
+async function getCurrentFilteredProducts() {
 	let filtered = window.products || [];
+
+	// Filter by search input
+	const searchInput = document.getElementById('searchInput');
+	if (searchInput && searchInput.value.trim()) {
+		const searchTerm = searchInput.value.toLowerCase().trim();
+
+		// Try different field names
+		filtered = filtered.filter((p) => {
+			const name = p.name || p.productName || p.title || '';
+			const brand = p.brand || '';
+			const asin = p.asin || '';
+
+			return (
+				name.toLowerCase().includes(searchTerm) ||
+				brand.toLowerCase().includes(searchTerm) ||
+				asin.toLowerCase().includes(searchTerm)
+			);
+		});
+	}
 
 	// Filter by selected sellers
 	if (window.selectedSellers && window.selectedSellers.length > 0) {
@@ -272,6 +498,18 @@ async function filterProducts() {
 		);
 	}
 
+	return filtered;
+}
+
+async function filterProducts() {
+	let filtered = await getCurrentFilteredProducts();
+
+	console.log('Total products available:', window.products?.length || 0);
+	console.log('Filtered products:', filtered.length);
+	if (filtered.length > 0) {
+		console.log('Sample filtered product:', filtered[0]);
+	}
+
 	// Update stats
 	await updateStats(window.products, filtered);
 
@@ -283,11 +521,23 @@ async function filterProducts() {
 	}
 }
 async function loadProducts() {
-	const products = await fetchProducts();
-	window.products = products;
+	try {
+		showLoading(true);
+		const products = await fetchProducts();
+		console.log('Loaded products from API:', products.length);
+		window.products = products;
 
-	// Use filterProducts to handle stats and rendering
-	await filterProducts();
+		// Update sidebar counts after products are loaded
+		updateSidebarCounts();
+
+		// Use filterProducts to handle stats and rendering
+		await filterProducts();
+	} catch (error) {
+		console.error('Error loading products:', error);
+		showError('Failed to load products');
+	} finally {
+		showLoading(false);
+	}
 }
 function showGrid() {
 	document.getElementById('productList').style.display = 'grid';
@@ -385,66 +635,76 @@ async function renderGrid(products) {
 			}
 		}
 
-		// Chuẩn bị nội dung HTML cho product link
+		// Helper function để format số với dấu phẩy
+		const formatNumber = (num) => {
+			if (!num) return '0';
+			return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+		};
+
+		// Chuẩn bị nội dung HTML cho product link theo giao diện mới
 		productLink.innerHTML = `
-            <div class="product-image">
-                <div class="index-ab">#${i + 1}</div>
-                <img src="${p.productImage || ''}" alt="product image" />
-            </div>
-            <div class="product-card-body">
-                <p class="product-card-header">
-                    ${
-						p.productName.length > 50
-							? p.productName.slice(0, 50) + '...'
-							: p.productName
-					}
-                </p>
-
-                <p>
-                    <strong>${p.asin || ''}</strong>
-                    ${
-						p.soldBy
-							? `<span class="${fulfillmentClass}">${fulfillmentType}</span>`
-							: ''
-					}
-                    ${
-						daysSinceUpdate
-							? `<span style="float:right; margin-left: 20px">${daysSinceUpdate}d</span>`
-							: ''
-					}
-                </p>
-
-
-
-				${
-					latestRanks && latestRanks.length > 0
-						? `<div class="best-sellers-rank">
-                        <span class="highlight">Best Sellers Rank</span>
-                        <div class="rank-list">
-                            ${latestRanks
-								.map(
-									(rankObj) =>
-										`<span class="rank-item">#${rankObj.rank} in ${rankObj.category}</span>`
-								)
-								.join('')}
-                        </div>
-                    </div>`
+            <!-- Header: Brand + Rank Badge + Time -->
+            <div class="card-header-v2">
+                <div class="header-left">
+                    <span class="brand-name-v2">${
+						p.brand || p.soldBy || 'Unknown Brand'
+					}</span>
+                    <div class="rank-badge">#${i + 1}</div>
+                </div>
+                ${
+					daysSinceUpdate
+						? `<span class="time-indicator">${daysSinceUpdate}d</span>`
 						: ''
 				}
+            </div>
 
-                <div class="product-card-footer">
-                    <div>
-                        <p class="rating">⭐ ${p.rating || '0.0'} ${
-			p.totalReviews ? `(${p.totalReviews})` : '(0)'
-		}</p>
-                        ${
-							p.boughtInLast30Days
-								? `<p style="color:green; font-weight: bold">${p.boughtInLast30Days} <span style="color: green">+</span> Bought in Last 30 Days </p>`
-								: 'No Bought in Last 30 Days'
-						}
-                    </div>
-                    ${p.price ? `<p class="price">$${p.price}</p>` : ''}
-                </div>
+            <!-- Hình ảnh sản phẩm -->
+            <div class="product-image-v2">
+                <img src="${p.productImage || ''}" alt="product image" />
+            </div>
+
+            <!-- ASIN + Search + FBA -->
+            <div class="asin-row">
+                <span class="asin-text">${p.asin || ''}</span>
+                ${
+					p.soldBy
+						? `<span class="fba-badge-v2 ${fulfillmentClass}">${fulfillmentType}</span>`
+						: ''
+				}
+            </div>
+
+            <!-- Best Sellers Rank với category -->
+            ${
+				latestRanks && latestRanks.length > 0
+					? `<div class="ranks-section">
+                        ${latestRanks
+							.slice(0, 2)
+							.map(
+								(rankObj) =>
+									`<div class="rank-item-v2"><span class="highlight">#${formatNumber(
+										rankObj.rank
+									)}</span> in ${rankObj.category}</div>`
+							)
+							.join('')}
+                    </div>`
+					: ''
+			}
+
+            <!-- Bottom section: Unit Sold + Sales trend -->
+            <div class="bottom-section">
+                <div class="unit-sold sales-trend">${
+					p.boughtInLast30Days
+						? formatNumber(p.boughtInLast30Days) + '+'
+						: '0'
+				} in last 30 days</div>
+            </div>
+
+            <!-- Rating và Price cùng hàng -->
+            <div class="rating-price-row-v2">
+                <div class="rating-v2">⭐ ${p.rating || '0.0'} (${formatNumber(
+			p.totalReviews || 0
+		)})</div>
+                ${p.price ? `<div class="price-v2">$${p.price}</div>` : ''}
             </div>
         `;
 
@@ -464,8 +724,8 @@ async function renderTable(products) {
 		await updateStats(window.products, []);
 		return;
 	}
-	let html = `<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(45,108,223,0.08);overflow:hidden;">
-        <thead style="background:#f4f6fb;color:var(--primary);font-weight:600;">
+	let html = `<table class="product-table">
+        <thead>
             <tr>
                 <th>Image</th>
                 <th>Name</th>
@@ -509,38 +769,61 @@ async function renderTable(products) {
 			}
 		}
 
+		// Helper function to truncate text
+		const truncateText = (text, maxLength = 30) => {
+			if (!text) return '';
+			return text.length > maxLength
+				? text.slice(0, maxLength) + '...'
+				: text;
+		};
+
 		html += `<tr>
             <td><img src="${
 				p.productImage || ''
-			}" alt="Image" style="width:60px;height:40px;object-fit:cover;border-radius:4px;background:#e9eefa;"/></td>
-            <td>${
-				p.productName.length > 50
-					? p.productName.slice(0, 50) + '...'
-					: p.productName
-			}</td>
-            <td>${p.brand || p.brand_table || ''}</td>
-            <td>${p.asin || ''}</td>
-            <td>${p.category || ''}</td>
-            <td>${p.price ? '$' + p.price : ''}</td>
-            <td>${p.rating || ''}</td>
-            <td>${p.totalReviews || ''}</td>
-            <td>${p.soldBy || ''}</td>
-            <td style="max-width:200px;font-size:0.85em;">
+			}" alt="Product Image" class="table-product-image" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA2MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjhGOUZBIi8+CjxwYXRoIGQ9Ik0yMCAxNUg0MFYyNUgyMFYxNVoiIGZpbGw9IiNEOUQ5REQiLz4KPC9zdmc+'" /></td>
+            <td><span class="table-text-truncate" title="${
+				p.productName || ''
+			}">${truncateText(p.productName || '', 40)}</span></td>
+            <td><span class="table-text-truncate" title="${
+				p.brand || p.brand_table || ''
+			}">${truncateText(p.brand || p.brand_table || '', 20)}</span></td>
+            <td><span class="table-text-truncate" title="${
+				p.asin || ''
+			}">${truncateText(p.asin || '', 15)}</span></td>
+            <td><span class="table-text-truncate" title="${
+				p.category || ''
+			}">${truncateText(p.category || '', 25)}</span></td>
+            <td class="table-price">${p.price ? '$' + p.price : '-'}</td>
+            <td class="table-rating">${p.rating ? '⭐ ' + p.rating : '-'}</td>
+            <td>${p.totalReviews || '-'}</td>
+            <td><span class="table-text-truncate" title="${
+				p.soldBy || ''
+			}">${truncateText(p.soldBy || '', 20)}</span></td>
+            <td>
                 ${
 					latestRanks && latestRanks.length > 0
 						? latestRanks
+								.slice(0, 3) // Show only first 3 ranks
 								.map((rankObj) => {
 									const rankText = `#${rankObj.rank} in ${rankObj.category}`;
-									return `<div style="margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${rankText}">${rankText}</div>`;
+									return `<div class="rank-item" title="${rankText}">${truncateText(
+										rankText,
+										25
+									)}</div>`;
 								})
-								.join('')
-						: ''
+								.join('') +
+						  (latestRanks.length > 3
+								? `<div class="rank-item">+${
+										latestRanks.length - 3
+								  } more</div>`
+								: '')
+						: '-'
 				}
             </td>
-            <td>${formattedDate}</td>
+            <td>${formattedDate || '-'}</td>
             <td><a href="${
 				p.url || '#'
-			}" target="_blank" style="color:#2d6cdf;text-decoration:underline;">Amazon</a></td>
+			}" target="_blank" class="table-link">View</a></td>
         </tr>`;
 	});
 	html += `</tbody></table>`;
@@ -581,10 +864,14 @@ function getRankInCategory(rankArray, categoryKeyword) {
 	return extractRankNumber(rankArray[0]);
 }
 
-async function sortProducts() {
-	const sortSelect = document.getElementById('sortBy');
-	const sortBy = sortSelect.value;
-	let sortedProducts = [...(window.products || [])];
+async function sortProducts(sortBy = null) {
+	if (!sortBy) {
+		const sortSelect = document.getElementById('sortBy');
+		sortBy = sortSelect ? sortSelect.value : '';
+	}
+
+	// Get currently filtered products instead of all products
+	let sortedProducts = await getCurrentFilteredProducts();
 	if (sortBy === 'price_asc') {
 		sortedProducts.sort((a, b) => (a.price || 0) - (b.price || 0));
 	} else if (sortBy === 'price_desc') {
@@ -645,7 +932,7 @@ async function sortProducts() {
 		);
 	}
 
-	// Update stats with sorted products
+	// Update stats with sorted products (keep original total for stats)
 	await updateStats(window.products, sortedProducts);
 
 	if (displayMode === 'grid') {
@@ -658,6 +945,81 @@ async function sortProducts() {
 window.selectedSellers = [];
 window.selectedCategories = [];
 window.selectedSources = [];
+
+// Utility functions for UI feedback
+function showError(message) {
+	// Create or update error message
+	let errorDiv = document.getElementById('error-message');
+	if (!errorDiv) {
+		errorDiv = document.createElement('div');
+		errorDiv.id = 'error-message';
+		errorDiv.style.cssText = `
+			position: fixed;
+			top: 20px;
+			right: 20px;
+			background: #f44336;
+			color: white;
+			padding: 12px 20px;
+			border-radius: 8px;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+			z-index: 1000;
+			max-width: 300px;
+		`;
+		document.body.appendChild(errorDiv);
+	}
+	errorDiv.textContent = message;
+	errorDiv.style.display = 'block';
+
+	// Auto hide after 5 seconds
+	setTimeout(() => {
+		errorDiv.style.display = 'none';
+	}, 5000);
+}
+
+function showLoading(show = true) {
+	let loadingDiv = document.getElementById('loading-indicator');
+	if (show && !loadingDiv) {
+		loadingDiv = document.createElement('div');
+		loadingDiv.id = 'loading-indicator';
+		loadingDiv.style.cssText = `
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(255,255,255,0.9);
+			padding: 20px;
+			border-radius: 8px;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+			z-index: 1000;
+			text-align: center;
+		`;
+		loadingDiv.innerHTML = `
+			<div style="
+				width: 40px;
+				height: 40px;
+				border: 4px solid #f3f3f3;
+				border-top: 4px solid #ef6c00;
+				border-radius: 50%;
+				animation: spin 1s linear infinite;
+				margin: 0 auto 10px;
+			"></div>
+			<div>Loading...</div>
+		`;
+		document.body.appendChild(loadingDiv);
+	} else if (!show && loadingDiv) {
+		loadingDiv.remove();
+	}
+}
+
+// Add CSS for loading animation
+const style = document.createElement('style');
+style.textContent = `
+	@keyframes spin {
+		0% { transform: rotate(0deg); }
+		100% { transform: rotate(360deg); }
+	}
+`;
+document.head.appendChild(style);
 
 document.getElementById('gridBtn').onclick = async () => {
 	displayMode = 'grid';
@@ -738,7 +1100,143 @@ window.addEventListener('click', (event) => {
 	}
 });
 
+// Dropdown Functions
+function toggleDropdown(type) {
+	const dropdown = document.getElementById(type + 'Dropdown');
+	const otherDropdown =
+		type === 'sort'
+			? document.getElementById('filterDropdown')
+			: document.getElementById('sortDropdown');
+
+	// Close other dropdown
+	if (otherDropdown) {
+		otherDropdown.classList.remove('show');
+	}
+
+	// Toggle current dropdown
+	dropdown.classList.toggle('show');
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (event) => {
+	if (!event.target.closest('.dropdown')) {
+		document.querySelectorAll('.dropdown-content').forEach((dropdown) => {
+			dropdown.classList.remove('show');
+		});
+	}
+});
+
+// Sort Functions
+function selectSort(value) {
+	const sortText = document.getElementById('sortText');
+	const sortDropdown = document.getElementById('sortDropdown');
+
+	// Update text based on selection
+	const sortOptions = {
+		'': 'Sort by',
+		price_asc: 'Price: Low to High',
+		price_desc: 'Price: High to Low',
+		date_asc: 'Date: Oldest to Newest',
+		date_desc: 'Date: Newest to Oldest',
+		bought_desc: 'Bought: High to Low',
+		bought_asc: 'Bought: Low to High',
+	};
+
+	sortText.textContent = sortOptions[value] || 'Sort by';
+	sortDropdown.classList.remove('show');
+
+	// Apply sort
+	if (value) {
+		sortProducts(value);
+	}
+}
+
+// Filter Functions
+function applyFilters() {
+	const filterDropdown = document.getElementById('filterDropdown');
+	filterDropdown.classList.remove('show');
+
+	// Get filter values
+	const minPrice = document.getElementById('minPrice').value;
+	const maxPrice = document.getElementById('maxPrice').value;
+	const startDate = document.getElementById('startDate').value;
+	const endDate = document.getElementById('endDate').value;
+	const boughtInPastMonth =
+		document.getElementById('boughtInPastMonth').checked;
+
+	// Apply filters (you can implement the actual filtering logic here)
+	loadProducts();
+}
+
+function resetFilters() {
+	// Reset all filter inputs
+	document.getElementById('minPrice').value = '';
+	document.getElementById('maxPrice').value = '';
+	document.getElementById('startDate').value = '';
+	document.getElementById('endDate').value = '';
+	document.getElementById('boughtInPastMonth').checked = false;
+
+	// Close dropdown
+	document.getElementById('filterDropdown').classList.remove('show');
+
+	// Reload products
+	loadProducts();
+}
+
+// View Switch Functions
+function switchView(view) {
+	const gridBtn = document.getElementById('gridBtn');
+	const tableBtn = document.getElementById('tableBtn');
+	const productList = document.getElementById('productList');
+	const productTable = document.getElementById('productTable');
+
+	if (view === 'grid') {
+		gridBtn.classList.add('active');
+		tableBtn.classList.remove('active');
+		productList.style.display = 'grid';
+		productTable.style.display = 'none';
+	} else {
+		tableBtn.classList.add('active');
+		gridBtn.classList.remove('active');
+		productList.style.display = 'none';
+		productTable.style.display = 'block';
+	}
+}
+
+// Add event listeners
+document.addEventListener('DOMContentLoaded', () => {
+	const searchInput = document.getElementById('searchInput');
+	if (searchInput) {
+		// Add debounced search
+		let searchTimeout;
+		searchInput.addEventListener('input', () => {
+			clearTimeout(searchTimeout);
+			searchTimeout = setTimeout(() => {
+				filterProducts();
+			}, 300); // 300ms delay
+		});
+	}
+});
+
+// Test function to check database
+async function testDatabase() {
+	try {
+		const res = await fetch(
+			`${window.API_BASE_URL || ''}/api/products/test`
+		);
+		const data = await res.json();
+		console.log('Database test result:', data);
+		return data;
+	} catch (error) {
+		console.error('Database test failed:', error);
+		return null;
+	}
+}
+
 window.onload = async () => {
+	// Test database first
+	await testDatabase();
+
 	await loadSidebar();
 	await loadProducts();
 };

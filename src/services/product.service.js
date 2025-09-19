@@ -296,6 +296,19 @@ const getUniqueCategories = async () => {
 	return Array.from(categorySet);
 };
 
+const getUniqueSources = async () => {
+	try {
+		const sourceArr = await Product.find({}, 'source').lean();
+		const sourceSet = new Set(
+			sourceArr.map((p) => p.source).filter(Boolean)
+		);
+		return Array.from(sourceSet);
+	} catch (error) {
+		console.error('Error in getUniqueSources:', error);
+		throw error;
+	}
+};
+
 module.exports = {
 	createProduct,
 	getAllProducts,
@@ -306,4 +319,5 @@ module.exports = {
 	deleteAllProducts,
 	getUniqueSoldBy,
 	getUniqueCategories,
+	getUniqueSources,
 };
