@@ -129,14 +129,14 @@ function renderSidebar(sellers, categories, sources) {
 			</label>
 	`;
 
-	const visibleSellers = sellers.slice(0, 10);
+	const visibleSellers = sellers.slice(0, 5);
 	visibleSellers.forEach((seller) => {
 		sellerHtml += `<label class="filter-option"><input type="checkbox" name="seller" value="${seller}"><span>${seller}</span><span class="count">0</span></label>`;
 	});
 
-	if (sellers.length > 10) {
+	if (sellers.length > 5) {
 		sellerHtml += `<div class="show-more" onclick="toggleShowMore('seller')">Show more (${
-			sellers.length - 10
+			sellers.length - 5
 		})</div>`;
 	}
 
@@ -156,14 +156,14 @@ function renderSidebar(sellers, categories, sources) {
 			</label>
 	`;
 
-	const visibleCategories = categories.slice(0, 10);
+	const visibleCategories = categories.slice(0, 5);
 	visibleCategories.forEach((category) => {
 		categoryHtml += `<label class="filter-option"><input type="checkbox" name="category" value="${category}"><span>${category}</span><span class="count">0</span></label>`;
 	});
 
-	if (categories.length > 10) {
+	if (categories.length > 5) {
 		categoryHtml += `<div class="show-more" onclick="toggleShowMore('category')">Show more (${
-			categories.length - 10
+			categories.length - 5
 		})</div>`;
 	}
 
@@ -236,7 +236,9 @@ function setupFilterSearch(searchInputId, filterType) {
 			const searchTerm = e.target.value.toLowerCase();
 			const filterList = document.getElementById(filterType + 'List');
 			const options = filterList.querySelectorAll('.filter-option');
+			const showMoreElement = filterList.querySelector('.show-more');
 
+			// Hide/show options based on search
 			options.forEach((option) => {
 				const text = option.textContent.toLowerCase();
 				if (text.includes(searchTerm)) {
@@ -245,13 +247,146 @@ function setupFilterSearch(searchInputId, filterType) {
 					option.style.display = 'none';
 				}
 			});
+
+			// Hide/show "Show more/less" button based on search
+			if (showMoreElement) {
+				if (searchTerm.trim() === '') {
+					// Show button when no search term
+					showMoreElement.style.display = 'block';
+				} else {
+					// Hide button when searching
+					showMoreElement.style.display = 'none';
+				}
+			}
 		});
 	}
 }
 
 function toggleShowMore(type) {
-	// This will be implemented to show all items
-	console.log('Toggle show more for:', type);
+	const listElement = document.getElementById(type + 'List');
+	if (!listElement) return;
+
+	// Get all items for this type
+	let allItems = [];
+	if (type === 'seller') {
+		allItems = window.allSellers || [];
+	} else if (type === 'category') {
+		allItems = window.allCategories || [];
+	}
+
+	if (allItems.length === 0) return;
+
+	// Check if currently showing limited items by checking button text
+	const showMoreElement = listElement.querySelector('.show-more');
+	if (!showMoreElement) return;
+
+	const buttonText = showMoreElement.textContent.trim();
+	const isShowingLimited = buttonText.includes('Show more');
+
+	if (isShowingLimited) {
+		// Show all items
+		showAllItems(type, allItems);
+	} else {
+		// Show limited items
+		showLimitedItems(type, allItems);
+	}
+}
+
+function showAllItems(type, allItems) {
+	const listElement = document.getElementById(type + 'List');
+	if (!listElement) return;
+
+	// Preserve selected filters
+	const selectedValues = preserveSelectedFilters(type);
+
+	// Get counts
+	const counts = type === 'seller' ? getSellerCounts() : getCategoryCounts();
+
+	// Rebuild HTML with all items
+	let html = `
+		<label class="filter-option">
+			<input type="checkbox" name="${type}" value="all" ${
+		selectedValues.length === 0 ? 'checked' : ''
+	}>
+			<span>All</span>
+			<a href="#" class="clear-link" onclick="clear${
+				type.charAt(0).toUpperCase() + type.slice(1)
+			}Filters()">Clear</a>
+		</label>
+	`;
+
+	allItems.forEach((item) => {
+		const count = counts[item] || 0;
+		const isChecked = selectedValues.includes(item) ? 'checked' : '';
+		html += `<label class="filter-option"><input type="checkbox" name="${type}" value="${item}" ${isChecked}><span>${item}</span><span class="count">${count}</span></label>`;
+	});
+
+	// Add "Show less" button
+	html += `<div class="show-more" onclick="toggleShowMore('${type}')">Show less</div>`;
+
+	listElement.innerHTML = html;
+
+	// Re-add event listeners
+	document.querySelectorAll(`input[name="${type}"]`).forEach((input) => {
+		input.addEventListener('change', async () => {
+			if (type === 'seller') {
+				await onSellerFilterChange.call(input);
+			} else if (type === 'category') {
+				await onCategoryFilterChange.call(input);
+			}
+		});
+	});
+}
+
+function showLimitedItems(type, allItems) {
+	const listElement = document.getElementById(type + 'List');
+	if (!listElement) return;
+
+	// Preserve selected filters
+	const selectedValues = preserveSelectedFilters(type);
+
+	// Get counts
+	const counts = type === 'seller' ? getSellerCounts() : getCategoryCounts();
+
+	// Rebuild HTML with limited items
+	let html = `
+		<label class="filter-option">
+			<input type="checkbox" name="${type}" value="all" ${
+		selectedValues.length === 0 ? 'checked' : ''
+	}>
+			<span>All</span>
+			<a href="#" class="clear-link" onclick="clear${
+				type.charAt(0).toUpperCase() + type.slice(1)
+			}Filters()">Clear</a>
+		</label>
+	`;
+
+	const visibleItems = allItems.slice(0, 5);
+	visibleItems.forEach((item) => {
+		const count = counts[item] || 0;
+		const isChecked = selectedValues.includes(item) ? 'checked' : '';
+		html += `<label class="filter-option"><input type="checkbox" name="${type}" value="${item}" ${isChecked}><span>${item}</span><span class="count">${count}</span></label>`;
+	});
+
+	// Add "Show more" button if there are more items
+	if (allItems.length > 5) {
+		html += `<div class="show-more" onclick="toggleShowMore('${type}')">Show more (${
+			allItems.length - 5
+		})</div>`;
+	}
+
+	listElement.innerHTML = html;
+
+	// Re-add event listeners
+	document.querySelectorAll(`input[name="${type}"]`).forEach((input) => {
+		input.addEventListener('change', async () => {
+			if (type === 'seller') {
+				await onSellerFilterChange.call(input);
+			} else if (type === 'category') {
+				await onCategoryFilterChange.call(input);
+			}
+		});
+	});
 }
 
 function clearSellerFilters() {
@@ -306,6 +441,30 @@ function updateSidebarCounts() {
 	console.log('Updated seller counts:', sellerCounts);
 	console.log('Updated category counts:', categoryCounts);
 }
+
+// Helper function to preserve selected filters when rebuilding sidebar
+function preserveSelectedFilters(type) {
+	const selectedValues = [];
+	document
+		.querySelectorAll(`input[name="${type}"]:checked`)
+		.forEach((input) => {
+			if (input.value !== 'all') {
+				selectedValues.push(input.value);
+			}
+		});
+	return selectedValues;
+}
+
+// Helper function to restore selected filters after rebuilding sidebar
+function restoreSelectedFilters(type, selectedValues) {
+	document.querySelectorAll(`input[name="${type}"]`).forEach((input) => {
+		if (input.value === 'all') {
+			input.checked = selectedValues.length === 0;
+		} else {
+			input.checked = selectedValues.includes(input.value);
+		}
+	});
+}
 async function loadSidebar() {
 	try {
 		const [sellers, categories, sources] = await Promise.all([
@@ -313,6 +472,12 @@ async function loadSidebar() {
 			fetchCategoryList(),
 			fetchSourceList(),
 		]);
+
+		// Store all items globally for show more functionality
+		window.allSellers = sellers;
+		window.allCategories = categories;
+		window.allSources = sources;
+
 		renderSidebar(sellers, categories, sources);
 	} catch (error) {
 		console.error('Error loading sidebar:', error);
