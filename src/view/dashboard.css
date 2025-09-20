@@ -1426,12 +1426,19 @@ input[type="checkbox"]:checked+span {
 }
 
 .fba-badge-v2 {
-    background: #ffa500;
-    color: #333;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.7rem;
+    padding: 4px;
+    border-radius: 16px;
     font-weight: 600;
+}
+
+.fba-badge-v2.fba {
+    /* background: var(--primary); */
+    color: var(--primary);
+}
+
+.fba-badge-v2.fbm {
+    /* background: #007bff; */
+    color: #007bff;
 }
 
 .ranks-section {

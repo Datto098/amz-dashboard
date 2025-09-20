@@ -752,8 +752,12 @@ async function renderGrid(products) {
 		};
 
 		// Determine if it's FBA or FBM based on seller info
-		// In real data we might not have this info, so we'll use a placeholder
-		const fulfillmentType = p.fulfillmentType || 'FBA';
+		// FBA: Amazon.com, Amazon, or Amazon-related sellers
+		// FBM: All other sellers (third-party stores)
+		const seller = (p.soldBy || p.brand || '').toLowerCase();
+		const isAmazonSeller =
+			seller.includes('amazon') || seller === 'amazon.com';
+		const fulfillmentType = isAmazonSeller ? 'FBA' : 'FBM';
 		const fulfillmentClass = fulfillmentType === 'FBA' ? 'fba' : 'fbm';
 
 		// Calculate days since update based on updatedAt field if available
